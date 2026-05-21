@@ -15,6 +15,13 @@ function Canvas({ roomId, isDrawingAllowed }: CanvasProps) {
   const [lineWidth, setLineWidth] = useState(5);
   const [isEraser, setIsEraser] = useState(false);
 
+  // Track drawing state for local drawing
+  const lastLocalPointRef = useRef<{ x: number; y: number } | null>(null);
+  const isLocalDrawingRef = useRef(false);
+  
+  // Track last point for incoming draw events (for syncing)
+  const lastRemotePointRef = useRef<{ x: number; y: number } | null>(null);
+
   const currentColor = isEraser ? '#ffffff' : color;
 
   useEffect(() => {
@@ -28,7 +35,7 @@ function Canvas({ roomId, isDrawingAllowed }: CanvasProps) {
     context.lineJoin = 'round';
 
     const handleDrawMove = (data: DrawData) => {
-      drawLine(data);
+      drawRemoteLine(data);
     };
 
     const handleClearCanvas = () => {
@@ -58,25 +65,42 @@ function Canvas({ roomId, isDrawingAllowed }: CanvasProps) {
   const startDrawing = (e: React.MouseEvent<HTMLCanvasElement>) => {
     if (!isDrawingAllowed) return;
     setIsDrawing(true);
+    isLocalDrawingRef.current = true;
     const { x, y } = getCoordinates(e);
-    const data: DrawData = { x, y, isDrawing: false, color: currentColor, lineWidth };
-    drawLine(data);
+    lastLocalPointRef.current = { x, y };
+
+    // Start a new stroke
+    const data: DrawData = { x, y, isDrawing: true, color: currentColor, lineWidth };
+    drawLocalLine(data);
     socket.emit('draw_move', roomId, data);
   };
 
   const draw = (e: React.MouseEvent<HTMLCanvasElement>) => {
     if (!isDrawing || !isDrawingAllowed) return;
     const { x, y } = getCoordinates(e);
-    const data: DrawData = { x, y, isDrawing: true, color: currentColor, lineWidth };
-    drawLine(data);
-    socket.emit('draw_move', roomId, data);
+
+    if (lastLocalPointRef.current) {
+      const data: DrawData = {
+        x,
+        y,
+        isDrawing: true,
+        color: currentColor,
+        lineWidth
+      };
+      drawLocalLine(data);
+      socket.emit('draw_move', roomId, data);
+    }
+
+    lastLocalPointRef.current = { x, y };
   };
 
   const stopDrawing = () => {
     setIsDrawing(false);
+    isLocalDrawingRef.current = false;
+    lastLocalPointRef.current = null;
   };
 
-  const drawLine = (data: DrawData) => {
+  const drawLocalLine = (data: DrawData) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
@@ -85,14 +109,42 @@ function Canvas({ roomId, isDrawingAllowed }: CanvasProps) {
 
     context.strokeStyle = data.color;
     context.lineWidth = data.lineWidth;
+    context.lineCap = 'round';
+    context.lineJoin = 'round';
 
-    if (!data.isDrawing) {
+    if (lastLocalPointRef.current === null) {
       context.beginPath();
       context.moveTo(data.x, data.y);
     } else {
       context.lineTo(data.x, data.y);
       context.stroke();
+      context.beginPath();
+      context.moveTo(data.x, data.y);
     }
+  };
+
+  const drawRemoteLine = (data: DrawData) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const context = canvas.getContext('2d');
+    if (!context) return;
+
+    context.strokeStyle = data.color;
+    context.lineWidth = data.lineWidth;
+    context.lineCap = 'round';
+    context.lineJoin = 'round';
+
+    if (lastRemotePointRef.current === null) {
+      context.beginPath();
+      context.moveTo(data.x, data.y);
+    } else {
+      context.lineTo(data.x, data.y);
+      context.stroke();
+      context.beginPath();
+      context.moveTo(data.x, data.y);
+    }
+    lastRemotePointRef.current = { x: data.x, y: data.y };
   };
 
   const clearCanvas = () => {

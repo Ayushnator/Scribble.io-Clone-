@@ -31,7 +31,7 @@ function Game({ roomId, players: initialPlayers, username, settings, setGameEnde
   const [currentRound, setCurrentRound] = useState(1);
   const [totalRounds, setTotalRounds] = useState(settings.rounds || 3);
   const [showWordSelection, setShowWordSelection] = useState(false);
-  const [wordOptions, setWordOptions] = useState<(WordOption | string)[]>([]);
+  const [wordOptions, setWordOptions] = useState<WordOption[]>([]);
   const [revealedLetters, setRevealedLetters] = useState(0);
 
   useEffect(() => {
@@ -72,7 +72,7 @@ function Game({ roomId, players: initialPlayers, username, settings, setGameEnde
       setGuesses(prev => [...prev, { username: 'System', guess: `${data.username} guessed correctly! +${data.points} pts`, correct: true }]);
     };
 
-    const handleChooseWord = (words: string[]) => {
+    const handleChooseWord = (words: WordOption[]) => {
       setWordOptions(words);
       setShowWordSelection(true);
     };
@@ -158,16 +158,28 @@ function Game({ roomId, players: initialPlayers, username, settings, setGameEnde
           <div className="start-game-container">
             <h3>Waiting for players...</h3>
             <p>Players in room: {players.length} / {settings.maxPlayers}</p>
-            <button className="start-btn" onClick={handleStartGame}>Start Game</button>
+            <button 
+              className="start-btn" 
+              onClick={handleStartGame}
+              disabled={players.length < 1}
+              title={players.length < 1 ? "Need at least 1 player to start" : "Ready to start!"}
+            >
+              {players.length >= 1 ? 'Start Game' : 'Waiting for players...'}
+            </button>
           </div>
         ) : (
           <>
+            <div className="turn-info-banner">
+              <span className="drawer-name">
+                🎨 {players.find(p => p.isDrawing)?.username || 'Drawing'} is drawing!
+              </span>
+            </div>
             <div className="word-display">
               {isDrawer ? (
-                <div className="drawer-word">Draw: <span className="word">{word}</span></div>
+                <div className="drawer-word">Your word: <span className="word">{word}</span></div>
               ) : (
                 <div className="guess-word">
-                  {getDisplayWord()}
+                  <span className="hint-label">Word:</span> {getDisplayWord()}
                 </div>
               )}
             </div>
@@ -180,7 +192,13 @@ function Game({ roomId, players: initialPlayers, username, settings, setGameEnde
           <h3>Players</h3>
           {players.map(player => (
             <div key={player.id} className={`player-item ${player.isDrawing ? 'drawing' : ''} ${player.hasGuessed ? 'guessed' : ''}`}>
-              {player.username} - {player.score} pts
+              <div className="player-avatar" style={{ backgroundColor: player.avatar.color }}>
+                <span>{player.avatar.emoji}</span>
+              </div>
+              <div className="player-info">
+                <div className="player-name">{player.username}</div>
+                <div className="player-score">{player.score} pts</div>
+              </div>
               {player.isDrawing && <span className="badge">🎨 Drawing</span>}
               {player.hasGuessed && <span className="badge">✅ Guessed</span>}
             </div>

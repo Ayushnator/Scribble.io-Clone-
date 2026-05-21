@@ -75,9 +75,9 @@ function Lobby({ setRoomId, setPlayers, setUsername, setSettings }: LobbyProps) 
   const handleCreateRoom = () => {
     if (!name.trim()) return;
     setUsername(name);
-    const settings = { rounds, timePerTurn, maxPlayers, avatar: selectedAvatar };
+    const settings = { rounds, timePerTurn, maxPlayers };
     setSettings(settings);
-    socket.emit('create_room', { hostName: name, settings });
+    socket.emit('create_room', { hostName: name, settings, avatar: selectedAvatar });
   };
 
   const handleJoinRoom = () => {
