@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: scribble-io-backend
+    env: node
+    plan: free
+    buildCommand: cd backend && npm install
+    startCommand: cd backend && npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+
+  - type: static
+    name: scribble-io-frontend
+    buildCommand: cd frontend && npm install && npm run build
+    staticPublishPath: frontend/dist
+    envVars:
+      - key: VITE_BACKEND_URL
+        value: https://scribble-io-backend.onrender.com
