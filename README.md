@@ -4,8 +4,8 @@ A full-featured, real-time multiplayer drawing and guessing game inspired by skr
 
 ## 🎨 Features
 
-### Must Have Features
-✅ **Create room with configurable settings**: Customize rounds, time per turn, and max players
+###  Features
+✅ **Created room with configurable settings**: Customize rounds, time per turn, and max players
 ✅ **Join room via link or code**: Use room code or invite link to join
 ✅ **Lobby with player list; host starts game**: See who's in the room before starting
 ✅ **Turn-based rounds**: One drawer, others guess, automatic turn rotation
@@ -15,8 +15,6 @@ A full-featured, real-time multiplayer drawing and guessing game inspired by skr
 ✅ **Scoring and leaderboard**: Points based on guess speed, final leaderboard
 ✅ **Game end with winner**: Celebrate the winner at the end
 ✅ **Basic drawing tools**: Brush, colors, undo, clear
-
-### Should Have Features
 ✅ **Hints**: Reveal letters over time (every 15 seconds)
 ✅ **Chat**: Real-time chat for guesses and messages
 ✅ **Draw time countdown**: 60-second timer per turn
@@ -29,6 +27,8 @@ A full-featured, real-time multiplayer drawing and guessing game inspired by skr
 🔢 **Word bank**: 60+ words to draw
 📋 **One-click invite copy**: Copy invite link to clipboard
 🏆 **Winner celebration**: Gold background for the winner
+
+
 
 ## 🛠️ Tech Stack
 
