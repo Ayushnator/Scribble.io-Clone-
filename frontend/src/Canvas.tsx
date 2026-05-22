@@ -15,14 +15,9 @@ function Canvas({ roomId, isDrawingAllowed }: CanvasProps) {
   const [lineWidth, setLineWidth] = useState(5);
   const [isEraser, setIsEraser] = useState(false);
 
-  // Track drawing state for local drawing
-  const lastLocalPointRef = useRef<{ x: number; y: number } | null>(null);
-  const isLocalDrawingRef = useRef(false);
-  
-  // Track last point for incoming draw events (for syncing)
-  const lastRemotePointRef = useRef<{ x: number; y: number } | null>(null);
-
   const currentColor = isEraser ? '#ffffff' : color;
+
+  const lastPointRef = useRef<{ x: number; y: number } | null>(null);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -35,7 +30,7 @@ function Canvas({ roomId, isDrawingAllowed }: CanvasProps) {
     context.lineJoin = 'round';
 
     const handleDrawMove = (data: DrawData) => {
-      drawRemoteLine(data);
+      drawRemoteStroke(data);
     };
 
     const handleClearCanvas = () => {
@@ -65,96 +60,84 @@ function Canvas({ roomId, isDrawingAllowed }: CanvasProps) {
   const startDrawing = (e: React.MouseEvent<HTMLCanvasElement>) => {
     if (!isDrawingAllowed) return;
     setIsDrawing(true);
-    isLocalDrawingRef.current = true;
     const { x, y } = getCoordinates(e);
-    lastLocalPointRef.current = { x, y };
+    lastPointRef.current = { x, y };
 
-    // Start a new stroke
     const data: DrawData = { x, y, isDrawing: true, color: currentColor, lineWidth };
-    drawLocalLine(data);
+    drawLocalPoint(data);
     socket.emit('draw_move', roomId, data);
   };
 
   const draw = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!isDrawing || !isDrawingAllowed) return;
+    if (!isDrawing || !isDrawingAllowed || !lastPointRef.current) return;
+    
     const { x, y } = getCoordinates(e);
-
-    if (lastLocalPointRef.current) {
-      const data: DrawData = {
-        x,
-        y,
-        isDrawing: true,
-        color: currentColor,
-        lineWidth
-      };
-      drawLocalLine(data);
-      socket.emit('draw_move', roomId, data);
-    }
-
-    lastLocalPointRef.current = { x, y };
+    const data: DrawData = { x, y, isDrawing: true, color: currentColor, lineWidth };
+    
+    drawLocalLine(lastPointRef.current, { x, y }, currentColor, lineWidth);
+    socket.emit('draw_move', roomId, data);
+    
+    lastPointRef.current = { x, y };
   };
 
   const stopDrawing = () => {
     setIsDrawing(false);
-    isLocalDrawingRef.current = false;
-    lastLocalPointRef.current = null;
+    lastPointRef.current = null;
   };
 
-  const drawLocalLine = (data: DrawData) => {
+  const drawLocalPoint = (data: DrawData) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
 
-    const context = canvas.getContext('2d');
-    if (!context) return;
-
-    context.strokeStyle = data.color;
-    context.lineWidth = data.lineWidth;
-    context.lineCap = 'round';
-    context.lineJoin = 'round';
-
-    if (lastLocalPointRef.current === null) {
-      context.beginPath();
-      context.moveTo(data.x, data.y);
-    } else {
-      context.lineTo(data.x, data.y);
-      context.stroke();
-      context.beginPath();
-      context.moveTo(data.x, data.y);
-    }
+    ctx.beginPath();
+    ctx.arc(data.x, data.y, data.lineWidth / 2, 0, Math.PI * 2);
+    ctx.fillStyle = data.color;
+    ctx.fill();
   };
 
-  const drawRemoteLine = (data: DrawData) => {
+  const drawLocalLine = (
+    from: { x: number; y: number },
+    to: { x: number; y: number },
+    color: string,
+    lineWidth: number
+  ) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
 
-    const context = canvas.getContext('2d');
-    if (!context) return;
+    ctx.strokeStyle = color;
+    ctx.lineWidth = lineWidth;
+    ctx.beginPath();
+    ctx.moveTo(from.x, from.y);
+    ctx.lineTo(to.x, to.y);
+    ctx.stroke();
+  };
 
-    context.strokeStyle = data.color;
-    context.lineWidth = data.lineWidth;
-    context.lineCap = 'round';
-    context.lineJoin = 'round';
+  const drawRemoteStroke = (data: DrawData) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
 
-    if (lastRemotePointRef.current === null) {
-      context.beginPath();
-      context.moveTo(data.x, data.y);
+    if (!lastPointRef.current) {
+      drawLocalPoint(data);
+      lastPointRef.current = { x: data.x, y: data.y };
     } else {
-      context.lineTo(data.x, data.y);
-      context.stroke();
-      context.beginPath();
-      context.moveTo(data.x, data.y);
+      drawLocalLine(lastPointRef.current, { x: data.x, y: data.y }, data.color, data.lineWidth);
+      lastPointRef.current = { x: data.x, y: data.y };
     }
-    lastRemotePointRef.current = { x: data.x, y: data.y };
   };
 
   const clearCanvas = () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-
-    const context = canvas.getContext('2d');
-    if (!context) return;
-
-    context.clearRect(0, 0, canvas.width, canvas.height);
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    lastPointRef.current = null;
   };
 
   const handleClear = () => {

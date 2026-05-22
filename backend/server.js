@@ -305,7 +305,6 @@ io.on('connection', (socket) => {
       return;
     }
     
-    // Only store and broadcast valid draw data
     if (data && typeof data.x === 'number' && typeof data.y === 'number') {
       room.drawHistory.push(data);
       socket.to(roomId).emit('draw_move', data);
